@@ -375,3 +375,25 @@ The loaded dataset, ADN backbone model, and CQR trained head model can all be tr
 
 Similarly, the output metrics and artifacts are all saved both locally and on the MLflow server, and can be retrieved via APIs as needed. Further enhancing a demo-style run, the single-test sample workflow can be used to provide uncertainty artifacts (plots and metrics) for the localization of streaming input test samples for a selected SLA target (e.g., 90, 95, or 99 % coverage). 
 
+
+
+
+#### Online inference with trust radii (trustworthy-uq)
+
+`full_workflow.py` runs the packaged workflow (`trustworthy_uq.LocalizationUQ.run_experiment`) and, with `SAVE_ENGINE = True`, saves the calibrated engine (ADN backbone, UQ head, conformal offsets and SLA levels) to `package_functional_test/engine/`. The engine can then be reloaded in any process without the dataset:
+
+```python
+from trustworthy_uq import TrustedLocalizer
+
+localizer = TrustedLocalizer.load("package_functional_test/engine")
+result = localizer.locate(csi)        # raw complex CSI, shape (64, 100)
+result.position_mm                    # predicted (x, y) in mm
+result.radius(0.95)                   # 95% conformal trust radius in mm
+result.meets(25.0, sla=0.95)          # True if the 95% radius is <= 25 mm
+```
+
+`online_localization.py` demonstrates this as a stream: it loads the engine (or builds it once from the committed ADN and CQR checkpoints), replays the held-out test measurements one at a time from the raw `.npy` files, accepts or rejects each fix against an accuracy requirement, and reports running coverage and latency:
+
+```bash
+python online_localization.py --sla 0.95 --max-radius-mm 25 --output stream.jsonl
+```

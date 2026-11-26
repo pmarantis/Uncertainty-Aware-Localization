@@ -21,6 +21,9 @@ Main workflow:
     Optional direct single-sample prediction
        ↓
     Optional single-sample plot
+       ↓
+    Optional saved online engine (TrustedLocalizer), reloadable
+    without the dataset for per-sample position + trust radius
 
 No direct evaluate() call is needed here because run_experiment()
 already performs the complete test-set evaluation.
@@ -124,6 +127,12 @@ RUN_SINGLE_PLOT = True
 
 OUTPUT_DIR = BASE_DIR / "package_functional_test"
 
+# Save the calibrated engine (backbone + UQ head + conformal offsets) so it
+# can be reloaded with TrustedLocalizer.load(ENGINE_DIR) for online use,
+# e.g. by online_localization.py.
+SAVE_ENGINE = True
+ENGINE_DIR = OUTPUT_DIR / "engine"
+
 
 # =============================================================================
 # SMALL HELPERS
@@ -138,6 +147,23 @@ def check_exists(path, name):
         )
 
     print(f"[OK] {name}: {path}")
+
+
+def build_eval_dataset(uq):
+    """Rebuild the dataset that run_experiment() used for EVAL_MODE."""
+    if EVAL_MODE.lower() == "pooled":
+        return uq.build_pooled_dataset(
+            data_dir=str(DATASET_PATH),
+            scenario_ids=SCENARIO_IDS,
+            num_users=4,
+            num_samples=240,
+        )
+    return uq.build_scenario_dataset(
+        data_dir=str(DATASET_PATH),
+        scenario_id=SCENARIO_ID,
+        num_users=4,
+        num_samples=240,
+    )
 
 
 def load_json(path):
@@ -395,13 +421,9 @@ def main():
 
         print("\n[8] Direct single-sample prediction")
 
-        # Reconstruct the same dataset used by the experiment.
-        dataset = uq.build_pooled_dataset(
-            data_dir=str(DATASET_PATH),
-            scenario_ids=SCENARIO_IDS,
-            num_users=4,
-            num_samples=240,
-        )
+        # Reconstruct the same dataset used by the experiment
+        # (pooled or single scenario, matching EVAL_MODE).
+        dataset = build_eval_dataset(uq)
 
         _, _, test_dataset = uq.split_dataset(dataset)
 
@@ -445,12 +467,7 @@ def main():
         # was executed. Otherwise construct the test sample here.
         if not RUN_DIRECT_PREDICT:
 
-            dataset = uq.build_pooled_dataset(
-                data_dir=str(DATASET_PATH),
-                scenario_ids=SCENARIO_IDS,
-                num_users=4,
-                num_samples=240,
-            )
+            dataset = build_eval_dataset(uq)
 
             _, _, test_dataset = uq.split_dataset(dataset)
 
@@ -485,7 +502,60 @@ def main():
             )
 
     # -------------------------------------------------------------------------
-    # 10. Final summary
+    # 10. Save the calibrated engine for online use
+    # -------------------------------------------------------------------------
+
+    if SAVE_ENGINE:
+
+        print("\n[10] Saving online engine")
+
+        from trustworthy_uq import TrustedLocalizer
+
+        localizer = TrustedLocalizer(
+            uq,
+            method=METHOD,
+            metadata={
+                "eval_mode": EVAL_MODE,
+                "scenario_ids": (
+                    list(SCENARIO_IDS)
+                    if EVAL_MODE.lower() == "pooled"
+                    else [SCENARIO_ID]
+                ),
+                "seed": uq.seed,
+                "split": list(uq.split),
+                "adn_checkpoint": ADN_CHECKPOINT.relative_to(BASE_DIR).as_posix(),
+            },
+        )
+
+        manifest = localizer.save(ENGINE_DIR, overwrite=True)
+
+        print(f"[OK] Engine saved: {manifest}")
+
+        # Reload it as a serving process would and check that it answers
+        # the selected test sample exactly as the in-memory engine does.
+        restored = TrustedLocalizer.load(ENGINE_DIR)
+
+        if not RUN_DIRECT_PREDICT and not RUN_SINGLE_PLOT:
+            dataset = build_eval_dataset(uq)
+            _, _, test_dataset = uq.split_dataset(dataset)
+            X_sample, y_sample = test_dataset[SINGLE_SAMPLE_INDEX]
+
+        live = localizer.locate(X_sample, y_true=y_sample)
+        reloaded = restored.locate(X_sample, y_true=y_sample)
+
+        for level in localizer.sla_levels:
+            if abs(live.radius(level) - reloaded.radius(level)) > 1e-3:
+                raise RuntimeError(
+                    "Reloaded engine disagrees with the in-memory engine "
+                    f"at SLA={level}: {live.radius(level)} vs "
+                    f"{reloaded.radius(level)} mm"
+                )
+
+        print("[OK] Reloaded engine reproduces the in-memory result")
+        print(f"  {reloaded.to_dict()}")
+
+    # -------------------------------------------------------------------------
+    # 11. Final summary
     # -------------------------------------------------------------------------
 
     print("\n" + "=" * 72)
@@ -510,6 +580,12 @@ def main():
 
         print(
             f"  Single sample:     {single_sample_file}"
+        )
+
+    if SAVE_ENGINE:
+
+        print(
+            f"  Online engine:     {ENGINE_DIR}"
         )
 
     print("\n[OK] Workflow completed successfully.")
