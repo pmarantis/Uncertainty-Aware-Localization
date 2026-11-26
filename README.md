@@ -30,7 +30,7 @@ Attention Dense Net and the data preprocessing/augmentation methods are derived 
 
 The ULA subset of the nomadic dataset from https://ieee-dataport.org/open-access/ultra-dense-indoor-mamimo-csi-dataset is used as data. Download (or extract the provided "data.rar" file) and place the `nomadic_dataset` directory under `data/` (resulting in `data/nomadic_dataset/ULA_lab_LoS`).
 
-Use `pip install -r requirements.txt` to prepare a virtual environment for running the repository.
+Create a Python 3.10–3.12 virtual environment and install the dependencies with `pip install -r requirements-portable.txt`. This installs the [trustworthy-uq](https://github.com/6G-DALI/trustworthy-uq) package (pinned to a specific commit), which provides the ADN backbone (`AttentionDenseNet`) and the Nomadic datamodule (`NomadicLocalizationDataModule`) used by the scripts. `models.py` and `dataset.py` are kept as thin re-exports of the package, so `from models import AttentionDenseNet` and `from dataset import NomadicLocalizationDataModule` still work. `requirements.txt` is the full Windows conda export of the original experiment environment and is kept for reference; it contains local `file:///` paths and is not installable on other machines.
 
 Set up MLflow tracking URI (in a separate shell):
 

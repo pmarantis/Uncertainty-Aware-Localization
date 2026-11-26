@@ -1,0 +1,26 @@
+# Portable, pip-installable dependencies for Uncertainty-Aware-Localization.
+#
+#   pip install -r requirements-portable.txt
+#
+# Tested with Python 3.10-3.12 (numpy 1.26 has no Python 3.13 wheels).
+# Versions match the environment the paper experiments were run in; the full
+# Windows conda export of that environment is kept in requirements.txt.
+#
+# torch is pinned without a CUDA suffix so it resolves on any platform. For a
+# specific CUDA or CPU-only build, install torch first from the matching index,
+# e.g. pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu121
+
+# Uncertainty-quantification package (ADN backbone, Nomadic datamodule, CQR, aSCP),
+# pinned to a commit of https://github.com/6G-DALI/trustworthy-uq
+trustworthy-uq @ git+https://github.com/6G-DALI/trustworthy-uq.git@cb82ecdf9d2518feaa155e4725057cad82f7b4c2
+
+torch==2.5.1
+lightning==2.5.6
+numpy==1.26.4
+pandas==2.3.3
+plotly==6.8.0
+mlflow==3.1.4
+
+# Used by utils.py plotting helpers
+matplotlib==3.10.9
+seaborn==0.13.2

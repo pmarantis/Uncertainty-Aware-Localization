@@ -9,8 +9,9 @@ Supports:
 - Metrics: overall uncertainty/SLA coverage metrics on the full test set,
   plus optional single-sample evaluation with a per-sample uncertainty plot.
 
-This script assumes that `dataset.NomadicLocalizationDataModule` and
-`models.AttentionDenseNet` are available.
+The ADN backbone (`AttentionDenseNet`) and the Nomadic datamodule
+(`NomadicLocalizationDataModule`) are imported from the trustworthy-uq package;
+install it with `pip install -r requirements-portable.txt`.
 """
 
 import math
@@ -31,8 +32,8 @@ from lightning.pytorch.loggers import MLFlowLogger
 from torch import nn
 from torch.utils.data import ConcatDataset, DataLoader, Subset
 
-from dataset import NomadicLocalizationDataModule
-from models import AttentionDenseNet
+from trustworthy_uq.data.nomadic import NomadicLocalizationDataModule
+from trustworthy_uq.localization.backbone import AttentionDenseNet
 
 # ============================================================================
 # User-configurable section
