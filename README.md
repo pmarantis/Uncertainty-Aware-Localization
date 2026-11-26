@@ -397,3 +397,24 @@ result.meets(25.0, sla=0.95)          # True if the 95% radius is <= 25 mm
 ```bash
 python online_localization.py --sla 0.95 --max-radius-mm 25 --output stream.jsonl
 ```
+
+###### \#### Running the paper experiments on the trustworthy-uq engine
+
+`Trustworthy_Localization_Experiments_uq_engine.py` runs the same workflows (ASCP / CQR, pooled / single scenario, load or train the ADN backbone, CQR head and ASCP scale model, single-sample plot) as a thin wrapper over `trustworthy_uq.LocalizationUQ.run_experiment`. The models, splits, conformal calibration, evaluation and CSV / JSON / plot artifacts come from the [trustworthy-uq](https://github.com/pmarantis/trustworthy-uq) package; the script only maps the configuration, seeds the run and logs to MLflow. `Trustworthy_Localization_Experiments_full_modular.py` is kept unchanged as the reference implementation.
+
+```bash
+pip install git+https://github.com/pmarantis/trustworthy-uq.git
+python Trustworthy_Localization_Experiments_uq_engine.py --method CQR --eval-mode pooled
+python Trustworthy_Localization_Experiments_uq_engine.py --method ASCP --eval-mode pooled
+python Trustworthy_Localization_Experiments_uq_engine.py --method CQR --eval-mode single --scenario 3 --train-cqr-head
+```
+
+The package is installed from the [pmarantis/trustworthy-uq](https://github.com/pmarantis/trustworthy-uq) fork for now, since it carries the fixes this script needs (e.g. the augmentation-name fix for training the ADN from scratch). Switch the URL back to `6G-DALI/trustworthy-uq` once those changes are merged upstream.
+
+The configuration block at the top of the script uses the same variable names and defaults as the original script, and every setting can also be overridden on the command line (`--help`). Use `--no-mlflow` to run without an MLflow server. Outputs go to `output/uq_engine_experiments/<pooled_scenarios|single_scenario_<id>>/<METHOD>` so the committed outputs of the original script are not overwritten; MLflow runs are named `uq_engine_experiments-<METHOD>` and use the same metric names as the original script (e.g. `cqr_0p95_true_coverage`, `adaptivescp_scale_0p95_true_coverage`).
+
+Differences from the original script:
+\- The ASCP scale model is trained with early stopping (patience 15) and the best validation checkpoint is kept, as implemented in the engine; the original script always trains 60 epochs and keeps the last weights. A trained scale model can be reused with `--ascp-checkpoint`.
+\- The metrics CSV adds `breach_rate` and does not include the calibration-set error columns.
+\- `ADN_AUGMENT_METHOD` names are mapped to the dataset loader's names (`random_attenuation` → `"random attenuation"`, `no_augmentation` → no augmentation) when training a new backbone.
+
