@@ -23,7 +23,7 @@ Supported workflows (same as the original script):
 
 Install the engine first:
 
-    pip install git+https://github.com/6G-DALI/trustworthy-uq.git
+    pip install git+https://github.com/pmarantis/trustworthy-uq.git
 
 Then edit the configuration block below, or override it from the command line:
 
