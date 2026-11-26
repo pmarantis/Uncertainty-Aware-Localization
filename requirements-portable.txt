@@ -11,8 +11,9 @@
 # e.g. pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu121
 
 # Uncertainty-quantification package (ADN backbone, Nomadic datamodule, CQR, aSCP),
-# pinned to a commit of https://github.com/6G-DALI/trustworthy-uq
-trustworthy-uq @ git+https://github.com/6G-DALI/trustworthy-uq.git@cb82ecdf9d2518feaa155e4725057cad82f7b4c2
+# pinned to a commit of https://github.com/pmarantis/trustworthy-uq (switch back to
+# https://github.com/6G-DALI/trustworthy-uq once the fork's changes are merged upstream)
+trustworthy-uq @ git+https://github.com/pmarantis/trustworthy-uq.git@d5fac91301e9462fdef6904333072c5bb51448ee
 
 torch==2.5.1
 lightning==2.5.6
